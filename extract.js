@@ -16,10 +16,14 @@ const bytes = {
 
 const columnTypes = {
     7430: "IndexField",
-    2621441: "String",
-    1: "",
-    6: "Int",
-    4: "Bool",
+    2621441: "string",
+    2293761: "string",
+    1966081: "string",
+    3276801: "string",
+    6: "int",
+    4: "bool",
+    7: "frequency",
+    65537: "char"
 }
 function concatBytes(index, howManyBytes, isInt = true){
     if(isInt){
@@ -98,18 +102,19 @@ while(byteIndex < buffer.length){
     let tempRow = {}
     for(var x = 0; x < columns.length; x++){
         let isInt = columns[x].type !== 2621441
-        let dataConcat = concatBytes(tempByteIndex, columns[x].data_length, isInt)
+        let stringRep = concatBytes(tempByteIndex, columns[x].data_length, bytes.AS_STRING)
+        stringRep = stringRep.substr(0, stringRep.indexOf('\x00'))
         let hex = sliceBuffer(tempByteIndex, columns[x].data_length)
+        if(!columnTypes[columns[x].type])
         tempRow[columns[x].name] = {
             offset: tempByteIndex,
-            dataConcat: dataConcat,
-            hex: hex
+            asString: stringRep,
+            asInt: concatBytes(tempByteIndex, columns[x].data_length, bytes.asInt),
+            type: columns[x].type,
+            hex: hex,
+            typeName: columnTypes[columns[x].type]
         }
-        //if(columns[x].name == 'Salary')
-            //hexes.push({hex: hex, jobName: tempRow['JobName'].dataConcat})
-        if(!isInt){
-            tempRow[columns[x].name].dataConcat = dataConcat.substr(0, dataConcat.indexOf('\x00'))
-        }
+        
         
         tempByteIndex += columns[x].data_length + 1;
     }
@@ -122,6 +127,7 @@ while(byteIndex < buffer.length){
     }
     //tempRow.name = concatBytes(tempByteIndex += bytes.BYTE, tempCol.length, bytes.AS_STRING)
     */
+   
     rows.push(tempRow)
     byteIndex = tempByteIndex
     byteIndex = nextIndex(byteIndex)
@@ -132,5 +138,5 @@ for(var i = 0; i < hexes.length; i++){
     output += hexes[i].hex + ": " + hexes[i].jobName + "\n"
 }
 //fs.writeFileSync('hexes.txt', output)
-fs.writeFileSync('rows.json', JSON.stringify(rows))
-console.table(rows)
+fs.writeFileSync('rows.json', JSON.stringify(rows,null,1))
+//console.table(rows)
