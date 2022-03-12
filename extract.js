@@ -1,9 +1,9 @@
-const { resolvePtr } = require('dns');
 var fs = require('fs');
 
-const filePath = 'world.dat'
+const filePath = 'jobs.dat'
 let buffer = fs.readFileSync(filePath)
 var byteIndex = 0;
+let rowCount = 0
 
 const bytes = {
     BYTE: 1,
@@ -20,6 +20,8 @@ const columnTypes = {
     2293761: "string",
     1966081: "string",
     3276801: "string",
+    1310721: "string",
+    131073: "string",
     6: "int",
     4: "bool",
     7: "frequency",
@@ -59,10 +61,10 @@ function nextNonZeroIndex(byteIndex){
     return byteIndex
 }
 function nextIndex(byteIndex){
-    while(buffer[byteIndex] !== rowCount + 1 && byteIndex < buffer.length){
+    while(!( buffer[byteIndex] == 1 && buffer[byteIndex+1] == rowCount + 1 ) && byteIndex < buffer.length){//while(buffer[byteIndex] !== rowCount + 1 && byteIndex < buffer.length){
         byteIndex++;
     }
-    return byteIndex
+    return byteIndex + 1
 }
 //let rowCount = concatBytes(byteIndex, bytes.LONG)
 let columnCount = concatBytes(byteIndex += 47, bytes.WORD)
@@ -75,7 +77,6 @@ for(var i = 0; i < columnCount; i++){
         index: concatBytes(byteIndex, bytes.WORD),
         name_length: concatBytes(byteIndex + 2, bytes.BYTE),
         type: concatBytes(byteIndex + 164, bytes.DWORD),
-
     }
     tempCol["data_length"] = concatBytes(byteIndex + 169, bytes.BYTE)
     tempCol["name"] = concatBytes(byteIndex + 3, tempCol.name_length, bytes.AS_STRING)
@@ -83,12 +84,13 @@ for(var i = 0; i < columnCount; i++){
     columns.push(tempCol)
     byteIndex += 768
 }
-byteIndex = next01Index(byteIndex)
+
+byteIndex = nextIndex(byteIndex)
 console.table(columns)
 let rows = []
 console.log(byteIndex)
 let hexes = []
-let rowCount = 0
+
 while(byteIndex < buffer.length){
     
     let sanityBit = buffer[byteIndex]
@@ -97,15 +99,15 @@ while(byteIndex < buffer.length){
     if(rowCount !== sanityBit){
         debugger
     }
-    
-    tempByteIndex = byteIndex + 25
+    tempByteIndex = byteIndex
+    //tempByteIndex = byteIndex + 25
     let tempRow = {}
     for(var x = 0; x < columns.length; x++){
         let isInt = columns[x].type !== 2621441
         let stringRep = concatBytes(tempByteIndex, columns[x].data_length, bytes.AS_STRING)
         stringRep = stringRep.substr(0, stringRep.indexOf('\x00'))
         let hex = sliceBuffer(tempByteIndex, columns[x].data_length)
-        if(!columnTypes[columns[x].type])
+        //if(!columnTypes[columns[x].type])
         tempRow[columns[x].name] = {
             offset: tempByteIndex,
             asString: stringRep,
@@ -115,18 +117,8 @@ while(byteIndex < buffer.length){
             typeName: columnTypes[columns[x].type]
         }
         
-        
         tempByteIndex += columns[x].data_length + 1;
     }
-    /*
-    let jobName = concatBytes(tempByteIndex += 31, 41, bytes.AS_STRING)
-
-    let tempRow = {
-        index: concatBytes(tempByteIndex, bytes.WORD),
-        jobName: jobName.substr(0, jobName.indexOf('\x00'))
-    }
-    //tempRow.name = concatBytes(tempByteIndex += bytes.BYTE, tempCol.length, bytes.AS_STRING)
-    */
    
     rows.push(tempRow)
     byteIndex = tempByteIndex
@@ -134,9 +126,9 @@ while(byteIndex < buffer.length){
     
 }
 let output = ''
-for(var i = 0; i < hexes.length; i++){
-    output += hexes[i].hex + ": " + hexes[i].jobName + "\n"
+for(var i = 0; i < rows.length; i++){
+    //output += rows[i].MaxAge.asInt + ": " + rows[i].JobName.asString + "\n"
 }
-//fs.writeFileSync('hexes.txt', output)
+fs.writeFileSync('arr.txt', output)
 fs.writeFileSync('rows.json', JSON.stringify(rows,null,1))
 //console.table(rows)
